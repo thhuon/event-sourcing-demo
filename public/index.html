@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopping Cart — Event Sourcing + CQRS</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --ink: #1d2330; --muted: #6b7280; --line: #e5e7eb;
+    --cmd: #2563eb; --cmd-soft: #eff4ff;
+    --es: #7c3aed; --es-soft: #f4efff;
+    --rm: #059669; --rm-soft: #ecfdf5;
+    --warn: #d97706; --warn-soft: #fff7e6;
+    --err: #dc2626; --err-soft: #fef2f2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px;
+           background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 19px; margin: 0; }
+  header .flow { color: var(--muted); font-size: 13px; }
+  header .flow b.c { color: var(--cmd); } header .flow b.e { color: var(--es); } header .flow b.r { color: var(--rm); }
+  main { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 16px; padding: 16px 24px; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+            display: flex; flex-direction: column; min-height: 0; }
+  section > h2 { margin: 0; padding: 12px 16px; font-size: 15px; border-bottom: 1px solid var(--line);
+                 display: flex; align-items: center; gap: 8px; border-radius: 12px 12px 0 0; }
+  section.cmd > h2 { background: var(--cmd-soft); color: var(--cmd); }
+  section.es > h2 { background: var(--es-soft); color: var(--es); }
+  section.rm > h2 { background: var(--rm-soft); color: var(--rm); }
+  h2 small { font-weight: 400; color: var(--muted); margin-left: auto; font-size: 12px; }
+  .body { padding: 14px 16px; overflow: auto; }
+  h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 8px; }
+  h3:first-child { margin-top: 0; }
+  button { font: inherit; font-size: 14px; border: 1px solid var(--line); background: #fff; border-radius: 8px;
+           padding: 6px 12px; cursor: pointer; }
+  button:hover { border-color: #9ca3af; }
+  button.primary { background: var(--cmd); border-color: var(--cmd); color: #fff; }
+  button.green { background: var(--rm); border-color: var(--rm); color: #fff; }
+  button.small { padding: 2px 9px; font-size: 13px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .products { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .product { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: flex;
+             justify-content: space-between; align-items: center; gap: 6px; }
+  .product .name { font-weight: 600; } .product .price { color: var(--muted); font-size: 13px; }
+  .chip { display: inline-block; white-space: nowrap; font-size: 12px; padding: 1px 8px; border-radius: 99px; font-weight: 600; }
+  .chip.open { background: var(--cmd-soft); color: var(--cmd); }
+  .chip.done { background: var(--rm-soft); color: var(--rm); }
+  .chip.run { background: var(--rm-soft); color: var(--rm); }
+  .chip.stop { background: var(--err-soft); color: var(--err); }
+  .chip.lag { background: var(--warn-soft); color: var(--warn); }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .cart-box { border: 1px dashed var(--line); border-radius: 10px; padding: 10px; }
+  .empty { color: var(--muted); font-style: italic; padding: 6px 0; }
+  .total { display: flex; justify-content: space-between; font-weight: 700; padding-top: 8px; }
+  .log { display: flex; flex-direction: column; gap: 6px; }
+  .log div { border-radius: 8px; padding: 6px 10px; font-size: 13.5px; }
+  .log .ok { background: var(--rm-soft); } .log .rej { background: var(--err-soft); }
+  .log b { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .ev { border: 1px solid var(--line); border-left: 4px solid var(--es); border-radius: 8px; padding: 7px 10px;
+        margin-bottom: 7px; transition: background .4s; }
+  .ev.other { opacity: .5; }
+  .ev.pending { border-left-color: var(--warn); background: var(--warn-soft); }
+  .ev.fresh { background: var(--es-soft); }
+  .ev .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .ev .type { font-weight: 700; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  .ev .meta { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+  .ev .data { font-size: 13px; color: #374151; margin-top: 2px; }
+  tr.current td { background: var(--cmd-soft); }
+  tr.clickable { cursor: pointer; }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+  label.toggle { display: flex; gap: 6px; align-items: center; font-size: 13.5px; color: #374151; cursor: pointer; }
+  a { color: var(--es); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛒 Shopping Cart — Event Sourcing + CQRS</h1>
+  <div class="flow">
+    <b class="c">Command</b> → append event vào <b class="e">EventStoreDB</b>
+    → <b class="r">projector</b> cập nhật <b class="r">PostgreSQL</b> → <b class="c">Query</b> đọc read model
+  </div>
+</header>
+
+<main>
+  <!-- ================= COMMAND SIDE ================= -->
+  <section class="cmd">
+    <h2>① Command side <small>POST / DELETE / PUT /v2/…</small></h2>
+    <div class="body">
+      <h3>Giỏ hàng hiện tại</h3>
+      <div class="row" style="margin-bottom:8px">
+        <span class="mono" id="cartLabel">—</span>
+        <span id="cartStatus"></span>
+        <span class="mono" id="revLabel" title="Version client sẽ gửi trong header If-Match"></span>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="primary" onclick="openCart()">+ Giỏ mới</button>
+        <button onclick="confirmCart()">✓ Xác nhận giỏ (checkout)</button>
+      </div>
+
+      <div class="cart-box">
+        <div id="cartItems"></div>
+        <div class="hint">Nội dung giỏ được đọc từ <b>read model</b> (cột ③), không đọc từ event store.</div>
+      </div>
+
+      <h3>Sản phẩm</h3>
+      <div class="products" id="products"></div>
+
+      <h3>Kết quả command</h3>
+      <label class="toggle"><input type="checkbox" id="stale">
+        Lần gửi tới dùng version cũ (giả lập tab khác đã sửa giỏ)</label>
+      <div class="log" id="log" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <!-- ================= EVENT STORE ================= -->
+  <section class="es">
+    <h2>② Event store — EventStoreDB <small>append-only, mới nhất ở trên</small></h2>
+    <div class="body">
+      <div class="row" style="margin-bottom:10px">
+        <label class="toggle"><input type="checkbox" id="onlyCurrent" onchange="render()"> Chỉ stream của giỏ hiện tại</label>
+        <a href="http://localhost:2114/web/index.html#/streams" target="_blank" style="margin-left:auto;font-size:13px">Mở EventStoreDB UI ↗</a>
+      </div>
+      <div id="events"></div>
+    </div>
+  </section>
+
+  <!-- ================= READ MODEL ================= -->
+  <section class="rm">
+    <h2>③ Read model — PostgreSQL <small>bảng cart + cart_item</small></h2>
+    <div class="body">
+      <h3>Projector</h3>
+      <div class="row">
+        <span id="projector"></span>
+        <span id="lag"></span>
+        <span class="mono" id="checkpoint" style="color:var(--muted)"></span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="small" onclick="demo('projector/stop')">⏸ Dừng projector</button>
+        <button class="small green" onclick="demo('projector/start')">▶ Chạy projector</button>
+        <button class="small" onclick="resetReadModel()">🗑 Xóa read model</button>
+      </div>
+      <div class="hint">Xóa read model chỉ xóa bảng Postgres và checkpoint; events vẫn còn. Bấm ▶ để replay từ đầu.</div>
+
+      <h3>Các giỏ hàng (query)</h3>
+      <div id="carts"></div>
+      <div class="hint">Bấm một dòng để chọn giỏ đó làm giỏ hiện tại.
+        Query API: <a id="queryLink" class="mono" target="_blank" href="#"></a></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const vnd = (n) => Number(n).toLocaleString('vi-VN') + ' ₫';
+const short = (id) => (id || '').slice(0, 8);
+const STATUS = { 1: ['Đang mở', 'open'], 2: ['Đã xác nhận', 'done'], 4: ['Đã hủy', 'stop'] };
+
+let state = { products: [], events: [], carts: [], projector: 'stopped', checkpoint: 0, lag: 0 };
+let cartId = localStorage.getItem('cartId');
+let revision = Number(localStorage.getItem('revision') ?? NaN);
+let lastSeenPosition = 0;
+const logs = [];
+
+function remember() {
+  localStorage.setItem('cartId', cartId ?? '');
+  localStorage.setItem('revision', String(revision));
+}
+
+function productName(id) {
+  return state.products.find((p) => p.productId === Number(id))?.name ?? `#${id}`;
+}
+
+// ---------- commands ----------
+async function command(label, eventType, method, url, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (method !== 'POST' || url.includes('/product-items')) {
+    const stale = $('stale').checked;
+    const sent = stale ? revision - 1 : revision;
+    headers['If-Match'] = `W/"${sent}"`;
+    if (stale) $('stale').checked = false;
+  }
+  const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const etag = res.headers.get('ETag');
+  if (res.ok) {
+    if (etag) revision = Number(/W\/"(\d+)"/.exec(etag)[1]);
+    const json = res.status === 201 ? await res.json() : null;
+    if (json?.id) cartId = json.id;
+    remember();
+    addLog('ok', `${res.status} · ${label} → append <b>${eventType}</b>, stream revision = ${revision}`);
+  } else {
+    const err = await res.json().catch(() => ({ error: res.statusText, message: '' }));
+    addLog('rej', `${res.status} · ${label} bị từ chối: <b>${err.error}</b> — ${err.message}. Không có event nào được ghi.`);
+  }
+  refresh();
+}
+
+function openCart() {
+  command('Mở giỏ', 'shopping-cart-opened', 'POST', '/v2/shopping-carts');
+}
+function addItem(productId) {
+  if (!cartId) return addLog('rej', 'Hãy mở giỏ trước.');
+  command(`Thêm ${productName(productId)}`, 'product-item-added-to-shopping-cart', 'POST',
+    `/v2/shopping-carts/${cartId}/product-items`, { productId, quantity: 1 });
+}
+function removeItem(productId) {
+  command(`Bớt ${productName(productId)}`, 'product-item-removed-from-shopping-cart', 'DELETE',
+    `/v2/shopping-carts/${cartId}/product-items?productId=${productId}&quantity=1`);
+}
+function confirmCart() {
+  if (!cartId) return addLog('rej', 'Hãy mở giỏ trước.');
+  command('Xác nhận giỏ', 'shopping-cart-confirmed', 'PUT',
+    `/v2/users/1/shopping-carts/${cartId}`, { line1: '227 Nguyễn Văn Cừ, Q.5' });
+}
+
+function addLog(kind, html) {
+  logs.unshift({ kind, html, at: new Date().toLocaleTimeString('vi-VN') });
+  logs.length = Math.min(logs.length, 6);
+  $('log').innerHTML = logs.map((l) => `<div class="${l.kind}">${l.at} · ${l.html}</div>`).join('');
+}
+
+function selectCart(sessionId) {
+  cartId = sessionId;
+  // Lấy version mới nhất của stream từ phía ghi (event store)
+  const last = state.events.find((e) => e.streamId === `shopping_cart-${sessionId}`);
+  const row = state.carts.find((c) => c.sessionId === sessionId);
+  revision = last ? last.revision : Number(row?.revision ?? 0);
+  remember();
+  render();
+}
+
+// ---------- demo controls ----------
+async function demo(path) {
+  await fetch(`/demo/${path}`, { method: 'POST' });
+  refresh();
+}
+function resetReadModel() {
+  if (confirm('Dừng projector và xóa toàn bộ read model (Postgres)? Events trong EventStoreDB vẫn giữ nguyên.'))
+    demo('read-model/reset');
+}
+
+// ---------- rendering ----------
+function describe(e) {
+  const d = e.data || {};
+  switch (e.type) {
+    case 'shopping-cart-opened': return `Mở giỏ lúc ${new Date(d.openedAt).toLocaleTimeString('vi-VN')}`;
+    case 'product-item-added-to-shopping-cart':
+    case 'product-item-removed-from-shopping-cart': {
+      const p = d.productItem || {};
+      return `${productName(p.productId)} × ${p.quantity} · giá ${vnd(p.price)}`;
+    }
+    case 'shopping-cart-confirmed':
+      return `User #${d.user?.id} ${d.user?.firstName ?? ''} ${d.user?.lastName ?? ''} · ${d.additionalInfo?.line1 ?? ''}`;
+    default: return JSON.stringify(d);
+  }
+}
+
+function render() {
+  const current = state.carts.find((c) => c.sessionId === cartId);
+  const stream = cartId ? `shopping_cart-${cartId}` : null;
+
+  // command side
+  $('cartLabel').textContent = cartId ? `shopping_cart-${short(cartId)}…` : 'Chưa có giỏ — bấm “Giỏ mới”';
+  const st = current ? STATUS[current.status] : null;
+  $('cartStatus').innerHTML = st ? `<span class="chip ${st[1]}">${st[0]}</span>` : '';
+  $('revLabel').textContent = cartId && !Number.isNaN(revision) ? `If-Match: W/"${revision}"` : '';
+
+  if (!cartId) {
+    $('cartItems').innerHTML = '<div class="empty">Chưa có giỏ.</div>';
+  } else if (!current) {
+    $('cartItems').innerHTML = '<div class="empty">Read model chưa có giỏ này (projector đang dừng hoặc chưa kịp xử lý).</div>';
+  } else if (!current.items.length) {
+    $('cartItems').innerHTML = '<div class="empty">Giỏ trống.</div>';
+  } else {
+    const total = current.items.reduce((s, i) => s + i.price * i.quantity, 0);
+    $('cartItems').innerHTML = `<table>
+      <tr><th>Sản phẩm</th><th class="num">SL</th><th class="num">Thành tiền</th><th></th></tr>
+      ${current.items.map((i) => `<tr><td>${productName(i.productId)}</td><td class="num">${i.quantity}</td>
+        <td class="num">${vnd(i.price * i.quantity)}</td>
+        <td class="num"><button class="small" onclick="removeItem(${i.productId})">− 1</button></td></tr>`).join('')}
+      </table><div class="total"><span>Tổng cộng</span><span>${vnd(total)}</span></div>`;
+  }
+
+  $('products').innerHTML = state.products.map((p) => `<div class="product">
+      <div><div class="name">${p.name}</div><div class="price">${vnd(p.price)}</div></div>
+      <button class="small" onclick="addItem(${p.productId})">+ Thêm</button></div>`).join('');
+
+  // event store
+  const onlyCurrent = $('onlyCurrent').checked;
+  const events = state.events.filter((e) => !onlyCurrent || e.streamId === stream);
+  $('events').innerHTML = events.length ? events.map((e) => {
+    const cls = [
+      stream && e.streamId !== stream ? 'other' : '',
+      e.position > state.checkpoint ? 'pending' : '',
+      e.position > lastSeenPosition && lastSeenPosition ? 'fresh' : '',
+    ].join(' ');
+    return `<div class="ev ${cls}">
+      <div class="top"><span class="type">${e.type}</span>
+        <span class="meta mono">${e.streamId.replace(/^(shopping_cart-)(.{8}).*$/, '$1$2…')} · rev ${e.revision}</span></div>
+      <div class="data">${describe(e)}${e.position > state.checkpoint ? ' · <b style="color:var(--warn)">chưa được project</b>' : ''}</div>
+    </div>`;
+  }).join('') : '<div class="empty">Chưa có event nào.</div>';
+  lastSeenPosition = Math.max(lastSeenPosition, ...state.events.map((e) => e.position), 0);
+
+  // read model
+  $('projector').innerHTML = state.projector === 'running'
+    ? '<span class="chip run">● Projector đang chạy</span>'
+    : '<span class="chip stop">■ Projector đang dừng</span>';
+  $('lag').innerHTML = state.lag ? `<span class="chip lag">${state.lag} event chưa project</span>` : '';
+  $('checkpoint').textContent = `checkpoint: ${state.checkpoint || 'START'}`;
+
+  $('carts').innerHTML = state.carts.length ? `<table>
+    <tr><th>Cart</th><th>Trạng thái</th><th class="num">revision</th><th>Items</th><th class="num">Tổng</th></tr>
+    ${state.carts.map((c) => {
+      const s = STATUS[c.status] || [c.status, ''];
+      const total = c.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      return `<tr class="clickable ${c.sessionId === cartId ? 'current' : ''}" onclick="selectCart('${c.sessionId}')">
+        <td class="mono">${short(c.sessionId)}…</td><td><span class="chip ${s[1]}">${s[0]}</span></td>
+        <td class="num mono">${c.revision}</td>
+        <td>${c.items.map((i) => `${productName(i.productId)} ×${i.quantity}`).join(', ') || '—'}</td>
+        <td class="num">${vnd(total)}</td></tr>`;
+    }).join('')}</table>` : '<div class="empty">Read model trống.</div>';
+
+  const q = cartId ? `/v2/shopping-carts/${cartId}` : '';
+  $('queryLink').textContent = q ? `GET ${q}` : '—';
+  $('queryLink').href = q || '#';
+}
+
+async function refresh() {
+  try {
+    const res = await fetch('/demo/state');
+    if (res.ok) state = await res.json();
+  } catch (_) { /* server restarting */ }
+  render();
+}
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>
