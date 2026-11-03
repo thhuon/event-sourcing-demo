@@ -7,7 +7,7 @@ import {
   EventStoreDBContainer,
   StartedEventStoreDBContainer,
 } from '#testing/eventStoreDB/eventStoreDBContainer';
-import { AllStreamSubscription } from '@eventstore/db-client';
+import { AllStreamSubscription } from '@kurrent/kurrentdb-client';
 import { Application } from 'express';
 import { CartDetails } from 'src/crud/shoppingCarts/shoppingCart';
 import request from 'supertest';
@@ -30,8 +30,8 @@ describe('Full flow', () => {
     app = getApplication(router);
 
     esdbContainer = await new EventStoreDBContainer().start();
-    config.eventStoreDB.connectionString = esdbContainer.getConnectionString();
-    console.log(config.eventStoreDB.connectionString);
+    config.kurrentDB.connectionString = esdbContainer.getConnectionString();
+    console.log(config.kurrentDB.connectionString);
 
     postgresContainer = await new PostgreSqlContainer().start();
     config.postgres.connectionString = `postgres://${postgresContainer.getUsername()}:${postgresContainer.getPassword()}@localhost:${postgresContainer.getPort()}/${postgresContainer.getDatabase()}`;

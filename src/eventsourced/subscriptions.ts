@@ -26,7 +26,7 @@ let starting = false;
 
 export const isProjectorRunning = () => current !== undefined;
 
-// Keeps the projector alive: if the subscription fails (e.g. EventStoreDB is
+// Keeps the projector alive: if the subscription fails (e.g. KurrentDB is
 // still starting), it restarts from the last checkpoint after a short pause.
 export const startProjector = async (): Promise<void> => {
   wanted = true;
@@ -66,7 +66,7 @@ export const stopProjector = async (): Promise<void> => {
   current = undefined;
 };
 
-// Drops everything the projector built. Events in EventStoreDB stay untouched,
+// Drops everything the projector built. Events in KurrentDB stay untouched,
 // so starting the projector again replays them from the beginning.
 export const resetReadModel = async (): Promise<void> => {
   await stopProjector();

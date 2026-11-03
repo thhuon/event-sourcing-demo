@@ -8,7 +8,7 @@ import {
   PostgreSqlContainer,
   StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
-import { v4 as uuid } from 'uuid';
+import { randomUUID as uuid } from 'crypto';
 import { router } from '../shoppingCarts/routes';
 import { CartDetails, ShoppingCartStatus } from '../shoppingCarts/shoppingCart';
 
@@ -22,7 +22,7 @@ describe('Full flow', () => {
     app = getApplication(router);
 
     // esdbContainer = await new EventStoreDBContainer().start();
-    // config.eventStoreDB.connectionString = esdbContainer.getConnectionString();
+    // config.kurrentDB.connectionString = esdbContainer.getConnectionString();
 
     postgresContainer = await new PostgreSqlContainer().start();
     config.postgres.connectionString = `postgres://${postgresContainer.getUsername()}:${postgresContainer.getPassword()}@localhost:${postgresContainer.getPort()}/${postgresContainer.getDatabase()}`;

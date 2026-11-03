@@ -1,5 +1,5 @@
-import { jsonEvent } from '@eventstore/db-client';
-import { v4 as uuid } from 'uuid';
+import { jsonEvent } from '@kurrent/kurrentdb-client';
+import { randomUUID as uuid } from 'crypto';
 import {
   EventStoreDBContainer,
   StartedEventStoreDBContainer,

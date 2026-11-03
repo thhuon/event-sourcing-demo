@@ -7,8 +7,7 @@ import {
   JSONRecordedEvent,
   RecordedEvent,
   ResolvedEvent,
-  StreamingRead,
-} from '@eventstore/db-client';
+} from '@kurrent/kurrentdb-client';
 import { StreamAggregator } from '../core/streams';
 import {
   addProductItem,
@@ -199,7 +198,7 @@ export type AddProductItemToShoppingCart = {
 
 export const addProductItemToShoppingCart = async (
   getPricedProduct: (productItem: ProductItem) => Promise<PricedProductItem>,
-  events: StreamingRead<ResolvedEvent<ShoppingCartEvent>>,
+  events: AsyncIterable<ResolvedEvent<ShoppingCartEvent>>,
   { shoppingCartId, productItem }: AddProductItemToShoppingCart,
 ): Promise<ProductItemAddedToShoppingCart> => {
   const shoppingCart = await getShoppingCart(events);
@@ -228,7 +227,7 @@ export type RemoveProductItemFromShoppingCart = {
 };
 
 export const removeProductItemFromShoppingCart = async (
-  events: StreamingRead<ResolvedEvent<ShoppingCartEvent>>,
+  events: AsyncIterable<ResolvedEvent<ShoppingCartEvent>>,
   { shoppingCartId, productItem }: RemoveProductItemFromShoppingCart,
 ): Promise<ProductItemRemovedFromShoppingCart> => {
   const shoppingCart = await getShoppingCart(events);
@@ -266,7 +265,7 @@ export type ConfirmShoppingCart = {
 
 export const confirmShoppingCart = async (
   getUserData: (userId: number) => Promise<User | undefined>,
-  events: StreamingRead<ResolvedEvent<ShoppingCartEvent>>,
+  events: AsyncIterable<ResolvedEvent<ShoppingCartEvent>>,
   { shoppingCartId, additionalInfo, userId }: ConfirmShoppingCart,
 ): Promise<ShoppingCartConfirmed> => {
   const shoppingCart = await getShoppingCart(events);

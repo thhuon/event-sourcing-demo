@@ -83,7 +83,7 @@
 <header>
   <h1>🛒 Shopping Cart — Event Sourcing + CQRS</h1>
   <div class="flow">
-    <b class="c">Command</b> → append event vào <b class="e">EventStoreDB</b>
+    <b class="c">Command</b> → append event vào <b class="e">KurrentDB</b>
     → <b class="r">projector</b> cập nhật <b class="r">PostgreSQL</b> → <b class="c">Query</b> đọc read model
   </div>
 </header>
@@ -121,11 +121,11 @@
 
   <!-- ================= EVENT STORE ================= -->
   <section class="es">
-    <h2>② Event store — EventStoreDB <small>append-only, mới nhất ở trên</small></h2>
+    <h2>② Event store — KurrentDB <small>append-only, mới nhất ở trên</small></h2>
     <div class="body">
       <div class="row" style="margin-bottom:10px">
         <label class="toggle"><input type="checkbox" id="onlyCurrent" onchange="render()"> Chỉ stream của giỏ hiện tại</label>
-        <a href="http://localhost:2114/web/index.html#/streams" target="_blank" style="margin-left:auto;font-size:13px">Mở EventStoreDB UI ↗</a>
+        <a href="http://localhost:2114/ui/navigator" target="_blank" style="margin-left:auto;font-size:13px">Mở KurrentDB UI ↗</a>
       </div>
       <div id="events"></div>
     </div>
@@ -241,7 +241,7 @@ async function demo(path) {
   refresh();
 }
 function resetReadModel() {
-  if (confirm('Dừng projector và xóa toàn bộ read model (Postgres)? Events trong EventStoreDB vẫn giữ nguyên.'))
+  if (confirm('Dừng projector và xóa toàn bộ read model (Postgres)? Events trong KurrentDB vẫn giữ nguyên.'))
     demo('read-model/reset');
 }
 

@@ -1,7 +1,7 @@
 //////////////////////////////////////
 /// Demo-only endpoints for the UI in /public.
 /// They peek into both stores so the page can show the write side
-/// (EventStoreDB) next to the read side (PostgreSQL). Not part of the
+/// (KurrentDB) next to the read side (PostgreSQL). Not part of the
 /// application's command or query API.
 //////////////////////////////////////
 
@@ -11,7 +11,7 @@ import {
   BACKWARDS,
   END,
   WrongExpectedVersionError,
-} from '@eventstore/db-client';
+} from '@kurrent/kurrentdb-client';
 import { NextFunction, Request, Response, Router } from 'express';
 import { getCheckpoints } from '../core/subscriptions';
 import { getEventStore } from '../core/streams';

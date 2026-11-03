@@ -12,7 +12,7 @@ import {
 } from '#core/validation';
 import { not, WhereCondition } from '@databases/pg-typed';
 import { NextFunction, Request, Response, Router } from 'express';
-import { v4 as uuid } from 'uuid';
+import { randomUUID as uuid } from 'crypto';
 import { create, update } from '../core/commandHandling';
 import { getEventStore } from '../core/streams';
 import { cartItems, carts } from '../db';

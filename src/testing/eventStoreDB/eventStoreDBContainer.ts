@@ -1,4 +1,4 @@
-import { EventStoreDBClient } from '@eventstore/db-client';
+import { KurrentDBClient } from '@kurrent/kurrentdb-client';
 import {
   AbstractStartedContainer,
   GenericContainer,
@@ -8,8 +8,8 @@ import { Environment } from 'testcontainers/build/types';
 
 const EVENTSTOREDB_PORT = 2113;
 const EVENTSTOREDB_TCP_PORTS = [EVENTSTOREDB_PORT];
-const EVENTSTOREDB_IMAGE_NAME = 'eventstore/eventstore';
-const EVENTSTOREDB_IMAGE_TAG = '24.10.0-bookworm-slim';
+const EVENTSTOREDB_IMAGE_NAME = 'docker.kurrent.io/kurrent-latest/kurrentdb';
+const EVENTSTOREDB_IMAGE_TAG = '26.1';
 
 export class EventStoreDBContainer extends GenericContainer {
   private readonly tcpPorts = EVENTSTOREDB_TCP_PORTS;
@@ -26,24 +26,24 @@ export class EventStoreDBContainer extends GenericContainer {
     const environment: Environment = {
       ...(runProjections
         ? {
-            EVENTSTORE_RUN_PROJECTIONS: 'ALL',
+            KURRENTDB_RUN_PROJECTIONS: 'ALL',
           }
         : {}),
       ...(isInsecure
         ? {
-            EVENTSTORE_INSECURE: 'true',
+            KURRENTDB_INSECURE: 'true',
           }
         : {}),
       ...(!emptyDatabase
         ? {
-            EVENTSTORE_MEM_DB: 'false',
-            EVENTSTORE_DB: '/data/integration-tests',
+            KURRENTDB_MEM_DB: 'false',
+            KURRENTDB_DB: '/data/integration-tests',
           }
         : {}),
-      EVENTSTORE_CLUSTER_SIZE: '1',
-      EVENTSTORE_START_STANDARD_PROJECTIONS: 'true',
-      EVENTSTORE_NODE_PORT: `${EVENTSTOREDB_PORT}`,
-      EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: 'true',
+      KURRENTDB_CLUSTER_SIZE: '1',
+      KURRENTDB_START_STANDARD_PROJECTIONS: 'true',
+      KURRENTDB_NODE_PORT: `${EVENTSTOREDB_PORT}`,
+      KURRENTDB_ENABLE_ATOM_PUB_OVER_HTTP: 'true',
     };
 
     this.withEnvironment(environment).withExposedPorts(...this.tcpPorts);
@@ -62,12 +62,10 @@ export class StartedEventStoreDBContainer extends AbstractStartedContainer {
   }
 
   getConnectionString(): string {
-    return `esdb://${this.getHost()}:${this.getMappedPort(
-      2113,
-    )}?tls=false&throwOnAppendFailure=false`;
+    return `kurrentdb://${this.getHost()}:${this.getMappedPort(2113)}?tls=false`;
   }
 
-  getClient(): EventStoreDBClient {
-    return EventStoreDBClient.connectionString(this.getConnectionString());
+  getClient(): KurrentDBClient {
+    return KurrentDBClient.connectionString(this.getConnectionString());
   }
 }

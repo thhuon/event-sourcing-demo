@@ -4,10 +4,10 @@ import { Transaction } from '@databases/pg';
 import {
   AllStreamResolvedEvent,
   AllStreamSubscription,
-  EventStoreDBClient,
+  KurrentDBClient,
   excludeSystemEvents,
   START,
-} from '@eventstore/db-client';
+} from '@kurrent/kurrentdb-client';
 import { subscriptionCheckpoints } from '../db';
 import { getEventStore } from './streams';
 
@@ -26,7 +26,7 @@ export type RunningSubscription = AllStreamSubscription & {
 
 export const SubscriptionToAll =
   (
-    getEventStore: () => EventStoreDBClient,
+    getEventStore: () => KurrentDBClient,
     loadCheckpoint: (subscriptionId: string) => Promise<bigint | undefined>,
   ) =>
   async (
